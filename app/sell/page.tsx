@@ -1,11 +1,28 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import type { ReactNode } from "react";
 import { ProductListingForm } from "@/app/components/sell/product-listing-form";
 import { SellerApplicationForm } from "@/app/components/account/forms";
 import { getCurrentAccount } from "@/app/lib/auth/account";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 
-export default async function SellPage() {
+export default function SellPage() {
+  return (
+    <Suspense
+      fallback={
+        <SellPageShell>
+          <p aria-busy="true" className="text-sm font-semibold text-slate-500">
+            Loading seller options…
+          </p>
+        </SellPageShell>
+      }
+    >
+      <SellPageContent />
+    </Suspense>
+  );
+}
+
+async function SellPageContent() {
   const account = await getCurrentAccount();
 
   if (!account.configured) {
