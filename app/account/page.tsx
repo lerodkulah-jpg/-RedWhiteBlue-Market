@@ -1,9 +1,27 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { signOutAction } from "@/app/actions/auth";
 import { ProfileForm } from "@/app/components/account/forms";
 import { requireSignedInAccount } from "@/app/lib/auth/account";
 
-export default async function AccountPage() {
+export default function AccountPage() {
+  return (
+    <Suspense
+      fallback={
+        <main
+          aria-busy="true"
+          className="min-h-screen bg-slate-50 px-4 py-10 text-center text-sm font-semibold text-slate-500"
+        >
+          Loading account…
+        </main>
+      }
+    >
+      <AccountPageContent />
+    </Suspense>
+  );
+}
+
+async function AccountPageContent() {
   const account = await requireSignedInAccount();
 
   if (account.profileError || !account.profile) {
