@@ -49,16 +49,43 @@ const sampleListings: MarketplaceListing[] = sampleProducts.map((product) => ({
   moderationStatus: "sample",
 }));
 
-export function getProductImageUrl(path: string) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!url) {
-    throw new Error("NEXT_PUBLIC_SUPABASE_URL is required to display product images.");
+export async function getProductImageUrls(paths: string[]) {
+  const uniquePaths = [...new Set(paths)];
+  const urlsByPath = new Map<string, string>();
+  if (uniquePaths.length === 0) {
+    return urlsByPath;
   }
 
-  return `${url.replace(/\/$/, "")}/storage/v1/object/public/product-images/${path
-    .split("/")
-    .map(encodeURIComponent)
-    .join("/")}`;
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.storage
+    .from("product-images")
+    .createSignedUrls(uniquePaths, 300);
+
+  if (error) {
+    throw new Error(`Unable to create product image URLs: ${error.message}`);
+  }
+
+  for (const image of data) {
+    if (image.error || !image.path || !image.signedUrl) {
+      throw new Error(
+        `Unable to create a product image URL: ${image.error ?? "Storage returned an invalid signed URL."}`,
+      );
+    }
+    urlsByPath.set(image.path, image.signedUrl);
+  }
+
+  return urlsByPath;
+}
+
+export function requireProductImageUrl(
+  urlsByPath: Map<string, string>,
+  path: string,
+) {
+  const url = urlsByPath.get(path);
+  if (!url) {
+    throw new Error("Storage did not return a signed URL for a product image.");
+  }
+  return url;
 }
 
 export async function getProductCategories(): Promise<CategoryRow[]> {
@@ -84,6 +111,7 @@ function rowToListing(
   categoryById: Map<string, string>,
   sellerById: Map<string, string>,
   imageByProductId: Map<string, string>,
+  imageUrlByPath: Map<string, string>,
 ): MarketplaceListing {
   const firstImagePath = imageByProductId.get(product.id);
   return {
@@ -99,7 +127,9 @@ function rowToListing(
     seller: sellerById.get(product.seller_id) ?? "Local seller",
     featured: false,
     description: product.description,
-    imageUrl: firstImagePath ? getProductImageUrl(firstImagePath) : null,
+    imageUrl: firstImagePath
+      ? requireProductImageUrl(imageUrlByPath, firstImagePath)
+      : null,
     moderationStatus: product.moderation_status,
   };
 }
@@ -182,13 +212,22 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
       imageByProductId.set(image.product_id, image.storage_path);
     }
   }
+  const imageUrlByPath = await getProductImageUrls(
+    [...imageByProductId.values()],
+  );
   const categoryById = new Map(
     categoryRows.map((category) => [category.id, category.name]),
   );
 
   return {
     listings: productRows.map((product) =>
-      rowToListing(product, categoryById, sellerById, imageByProductId),
+      rowToListing(
+        product,
+        categoryById,
+        sellerById,
+        imageByProductId,
+        imageUrlByPath,
+      ),
     ),
     categories: categoryRows.map((category) => category.name),
     error: null,
@@ -260,6 +299,9 @@ export async function getProductDetails(productId: string) {
   }
 
   const images = (imageResult.data ?? []) as ProductImageRow[];
+  const imageUrlByPath = await getProductImageUrls(
+    images.map((image) => image.storage_path),
+  );
   return {
     ...product,
     id: product.id,
@@ -269,8 +311,12 @@ export async function getProductDetails(productId: string) {
     emoji: "🛍️",
     color: "from-slate-100 to-blue-100",
     featured: false,
-    imageUrl: images[0] ? getProductImageUrl(images[0].storage_path) : null,
-    imageUrls: images.map((image) => getProductImageUrl(image.storage_path)),
+    imageUrl: images[0]
+      ? requireProductImageUrl(imageUrlByPath, images[0].storage_path)
+      : null,
+    imageUrls: images.map((image) =>
+      requireProductImageUrl(imageUrlByPath, image.storage_path),
+    ),
     formattedPrice: formatPrice(Number(product.price), product.currency),
     moderationStatus: product.moderation_status,
   };

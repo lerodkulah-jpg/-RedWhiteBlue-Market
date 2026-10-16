@@ -12,7 +12,10 @@ import {
   type ListingReport,
 } from "@/app/components/admin/listing-report-review";
 import { requireAdministrator } from "@/app/lib/auth/account";
-import { getProductImageUrl } from "@/app/lib/marketplace";
+import {
+  getProductImageUrls,
+  requireProductImageUrl,
+} from "@/app/lib/marketplace";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 
 export default async function AdminPage() {
@@ -73,6 +76,9 @@ export default async function AdminPage() {
       firstImageByProductId.set(image.product_id, image.storage_path);
     }
   }
+  const imageUrlByPath = await getProductImageUrls(
+    [...firstImageByProductId.values()],
+  );
   const pendingProducts: ModerationProduct[] = (productRows ?? []).map(
     (product) => {
       const imagePath = firstImageByProductId.get(product.id);
@@ -85,7 +91,9 @@ export default async function AdminPage() {
         location: product.location,
         category: categoryById.get(product.category_id) ?? "Other",
         seller: sellerById.get(product.seller_id) ?? "Local seller",
-        imageUrl: imagePath ? getProductImageUrl(imagePath) : null,
+        imageUrl: imagePath
+          ? requireProductImageUrl(imageUrlByPath, imagePath)
+          : null,
       };
     },
   );

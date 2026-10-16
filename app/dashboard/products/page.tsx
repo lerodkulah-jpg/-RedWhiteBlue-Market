@@ -5,7 +5,10 @@ import {
   type SellerProduct,
 } from "@/app/components/sell/product-management";
 import { requireSellerAccount } from "@/app/lib/auth/account";
-import { getProductImageUrl } from "@/app/lib/marketplace";
+import {
+  getProductImageUrls,
+  requireProductImageUrl,
+} from "@/app/lib/marketplace";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 
 export default function SellerProductsPage() {
@@ -46,6 +49,9 @@ async function SellerProductsContent() {
       firstImageByProductId.set(image.product_id, image.storage_path);
     }
   }
+  const imageUrlByPath = await getProductImageUrls(
+    [...firstImageByProductId.values()],
+  );
   const products: SellerProduct[] = (productRows ?? []).map((product) => {
     const imagePath = firstImageByProductId.get(product.id);
     return {
@@ -54,7 +60,9 @@ async function SellerProductsContent() {
       price: product.price,
       currency: product.currency as "USD" | "LRD",
       moderation_status: product.moderation_status,
-      image_url: imagePath ? getProductImageUrl(imagePath) : null,
+      image_url: imagePath
+        ? requireProductImageUrl(imageUrlByPath, imagePath)
+        : null,
     };
   });
 

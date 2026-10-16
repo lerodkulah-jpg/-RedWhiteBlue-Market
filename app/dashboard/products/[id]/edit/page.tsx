@@ -6,7 +6,11 @@ import {
   type ProductFormValues,
 } from "@/app/components/sell/product-listing-form";
 import { requireSellerAccount } from "@/app/lib/auth/account";
-import { getProductCategories, getProductImageUrl } from "@/app/lib/marketplace";
+import {
+  getProductCategories,
+  getProductImageUrls,
+  requireProductImageUrl,
+} from "@/app/lib/marketplace";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 
 type EditProductPageProps = {
@@ -76,8 +80,11 @@ async function EditProductContent({ params }: EditProductPageProps) {
         location: product.location,
       }
     : null;
+  const imageUrlByPath = await getProductImageUrls(
+    (images ?? []).map((image) => image.storage_path),
+  );
   const existingImages = (images ?? []).map((image, index) => ({
-    url: getProductImageUrl(image.storage_path),
+    url: requireProductImageUrl(imageUrlByPath, image.storage_path),
     alt: `Current product image ${index + 1}`,
   }));
 

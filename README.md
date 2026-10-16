@@ -74,12 +74,15 @@ bundles or browser tools.
 ## Current scope
 
 When Supabase is not configured, the homepage and product detail pages use
-sample listings. With Supabase configured and both migrations applied, the
+sample listings. With Supabase configured and all migrations applied, the
 homepage and product details show published database listings. Sellers can
 create and manage listings from `/dashboard`; new and edited listings await
 administrator review at `/admin`. Product photos are stored in the
-`product-images` Supabase Storage bucket. Favorites are available to signed-in
-users, and table access is restricted with row-level security.
+private `product-images` Supabase Storage bucket. Public marketplace images
+use short-lived signed URLs and Storage row-level security permits images only
+for published listings, their sellers, and administrators. Favorites are
+available to signed-in users, and table access is restricted with row-level
+security.
 
 Image uploads accept up to four JPEG, PNG, or WebP files per save, up to 4 MB
 each and 10 per listing. The server checks file signatures, assigns random
