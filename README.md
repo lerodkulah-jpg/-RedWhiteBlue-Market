@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RedWhiteBlue Market
 
-## Getting Started
+RedWhiteBlue Market is a Liberia-focused marketplace built with Next.js App
+Router, TypeScript, Tailwind CSS, Supabase Auth, and PostgreSQL.
 
-First, run the development server:
+## Run locally
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env.local` and set the Supabase project URL,
+   publishable key, and server-only service-role key.
+3. Apply all migrations in `supabase/migrations/` to your Supabase project
+   using the SQL Editor or Supabase CLI, in timestamp order.
+4. In Supabase Authentication → URL Configuration, set the Site URL to your
+   local site and add `http://localhost:3000/auth/callback` to the redirect URL
+   allow list. Enable email confirmations and add your deployed callback URL
+   before production use.
+5. Start the development server with `npm run dev`.
+
+The application uses Supabase's cookie-based `@supabase/ssr` integration.
+`proxy.ts` refreshes sessions and verified claims are used for server-side
+authorization. The service-role key is used only by a `server-only` Storage
+helper after the seller action verifies the account and validates image
+contents. It must never be prefixed with `NEXT_PUBLIC_` or imported by browser
+code; marketplace database operations continue to use the signed-in user's
+session and RLS.
+
+## Account and seller roles
+
+- New profiles are created as buyers by a database trigger. Signup only accepts
+  a display name, email, and password; clients cannot select their role.
+- Users can update their own name, phone, and Liberia location and submit a
+  seller application from `/sell`.
+- An administrator reviews applications at `/admin`. Approval promotes the
+  applicant to seller in a database function that verifies the caller's
+  administrator role.
+- Profile row-level security and column-level grants prevent users from
+  changing their own role. Admin access is enforced by both the page and the
+  database function.
+
+To bootstrap the first administrator, first create and verify the account, then
+run this once in the Supabase SQL Editor, replacing the email:
+
+```sql
+update public.profiles
+set role = 'administrator'
+where id = (
+  select id
+  from auth.users
+  where email = 'admin@example.com'
+);
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Treat this as an operator-only action. Do not expose the SQL Editor credentials
+or a service-role key to the browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Authentication URLs
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Configure the following redirect URLs in Supabase Authentication:
 
-## Learn More
+- `http://localhost:3000/auth/callback` for local signup verification and
+  password recovery.
+- `https://your-domain.example/auth/callback` for the deployed site.
 
-To learn more about Next.js, take a look at the following resources:
+Set `NEXT_PUBLIC_SITE_URL` to the origin users visit. For Vercel, add
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+`NEXT_PUBLIC_SITE_URL`, and the server-only `SUPABASE_SERVICE_ROLE_KEY` to the
+project's Environment Variables for each environment. Set
+`NEXT_PUBLIC_SITE_URL` to the production custom-domain origin for Production
+and to the Vercel preview origin for Preview. Add each matching
+`/auth/callback` URL to Supabase's redirect URL allow list; keep the local
+callback URL for development. Never expose the service-role key to client
+bundles or browser tools.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Current scope
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+When Supabase is not configured, the homepage and product detail pages use
+sample listings. With Supabase configured and both migrations applied, the
+homepage and product details show published database listings. Sellers can
+create and manage listings from `/dashboard`; new and edited listings await
+administrator review at `/admin`. Product photos are stored in the
+`product-images` Supabase Storage bucket. Favorites are available to signed-in
+users, and table access is restricted with row-level security.
 
-## Deploy on Vercel
+Image uploads accept up to four JPEG, PNG, or WebP files per save, up to 4 MB
+each and 10 per listing. The server checks file signatures, assigns random
+storage names, and attempts to remove stored images when a seller deletes a
+listing; cleanup failures are reported to the seller.
+Images are previewed before submission. Prices display in the currency stored
+on each listing; the site does not convert USD and LRD or claim a live exchange
+rate. Signed-in, email-verified users can report published listings for admin
+review.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Seller contact and checkout are not implemented. Buyers should verify listings,
+meet in public, and avoid advance payments to unverified sellers.
