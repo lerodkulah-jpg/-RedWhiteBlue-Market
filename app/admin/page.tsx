@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import {
   SellerApplicationReview,
   type SellerApplication,
@@ -18,7 +19,24 @@ import {
 } from "@/app/lib/marketplace";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 
-export default async function AdminPage() {
+export default function AdminPage() {
+  return (
+    <Suspense
+      fallback={
+        <main
+          aria-busy="true"
+          className="min-h-screen bg-slate-50 px-4 py-10 text-center text-sm font-semibold text-slate-500"
+        >
+          Loading administrator tools…
+        </main>
+      }
+    >
+      <AdminPageContent />
+    </Suspense>
+  );
+}
+
+async function AdminPageContent() {
   await requireAdministrator();
   const supabase = await createServerSupabaseClient();
   const [
