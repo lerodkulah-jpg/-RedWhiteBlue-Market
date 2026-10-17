@@ -69,7 +69,14 @@ function ProductActions({ product }: { product: SellerProduct }) {
           <ActionButton intent="sold">Mark as sold</ActionButton>
         </form>
       )}
-      <form action={deleteAction}>
+      <form
+        action={deleteAction}
+        onSubmit={(event) => {
+          if (!window.confirm(`Delete "${product.name}"? This cannot be undone.`)) {
+            event.preventDefault();
+          }
+        }}
+      >
         <input type="hidden" name="productId" value={product.id} />
         <ActionButton intent="delete">Delete listing</ActionButton>
       </form>

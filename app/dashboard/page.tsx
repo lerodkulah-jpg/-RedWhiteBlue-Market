@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { requireSignedInAccount } from "@/app/lib/auth/account";
 
@@ -37,6 +38,8 @@ async function DashboardContent() {
 
   const isSeller = account.profile.role === "seller";
   const isAdmin = account.profile.role === "administrator";
+  if (isSeller) redirect("/seller/dashboard");
+  if (isAdmin) redirect("/admin/dashboard");
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 sm:px-6">
@@ -62,6 +65,12 @@ async function DashboardContent() {
                 : "Save favorites and request seller access when you are ready to list products."}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
+            <Link
+              href="/messages"
+              className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-[#102d58] hover:bg-slate-50"
+            >
+              My messages
+            </Link>
             {isSeller && (
               <>
                 <Link

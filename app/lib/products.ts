@@ -3,7 +3,7 @@ export type Product = {
   id: number;
   name: string;
   category: string;
-  price: number;
+  price: number | null;
   currency: "USD";
   location: string;
   emoji: string;
@@ -16,9 +16,10 @@ export type Product = {
 
 export type MarketplaceListing = {
   id: string;
+  sellerId: string | null;
   name: string;
   category: string;
-  price: number;
+  price: number | null;
   currency: "USD" | "LRD";
   location: string;
   emoji: string;
@@ -29,18 +30,21 @@ export type MarketplaceListing = {
   description: string;
   imageUrl: string | null;
   moderationStatus: string;
+  createdAt: string | null;
 };
 
 export const productCategories = [
   "Electronics",
   "Fashion",
-  "Vehicles",
   "Home & Living",
+  "Beauty & Health",
+  "Sports & Outdoors",
+  "Vehicles",
   "Property",
-  "Food & Grocery",
-  "Beauty",
-  "Agriculture",
+  "Jobs",
   "Services",
+  "Food & Groceries",
+  "Agriculture",
   "Other",
 ] as const;
 
@@ -49,7 +53,7 @@ export const products: Product[] = [
     id: 1,
     name: "Smartphone 128GB",
     category: "Electronics",
-    price: 280,
+    price: null,
     currency: "USD",
     location: "Monrovia, Montserrado",
     emoji: "📱",
@@ -64,7 +68,7 @@ export const products: Product[] = [
     id: 2,
     name: "Classic Sneakers",
     category: "Fashion",
-    price: 35,
+    price: null,
     currency: "USD",
     location: "Paynesville, Montserrado",
     emoji: "👟",
@@ -79,7 +83,7 @@ export const products: Product[] = [
     id: 3,
     name: "Mountain Bicycle",
     category: "Vehicles",
-    price: 120,
+    price: null,
     currency: "USD",
     location: "Gbarnga, Bong",
     emoji: "🚲",
@@ -94,7 +98,7 @@ export const products: Product[] = [
     id: 4,
     name: "Modern Living Chair",
     category: "Home & Living",
-    price: 85,
+    price: null,
     currency: "USD",
     location: "Monrovia, Montserrado",
     emoji: "🪑",
@@ -109,7 +113,7 @@ export const products: Product[] = [
     id: 5,
     name: "Fresh Garden Produce",
     category: "Food & Grocery",
-    price: 12,
+    price: null,
     currency: "USD",
     location: "Kakata, Margibi",
     emoji: "🥬",
@@ -124,7 +128,7 @@ export const products: Product[] = [
     id: 6,
     name: "Luxury Wristwatch",
     category: "Fashion",
-    price: 45,
+    price: null,
     currency: "USD",
     location: "Buchanan, Grand Bassa",
     emoji: "⌚",
@@ -139,7 +143,7 @@ export const products: Product[] = [
     id: 7,
     name: "Residential Land",
     category: "Property",
-    price: 3500,
+    price: null,
     currency: "USD",
     location: "Bensonville, Montserrado",
     emoji: "🏡",
@@ -154,7 +158,7 @@ export const products: Product[] = [
     id: 8,
     name: "Skincare Essentials",
     category: "Beauty",
-    price: 18,
+    price: null,
     currency: "USD",
     location: "Monrovia, Montserrado",
     emoji: "🧴",

@@ -97,6 +97,12 @@ async function AccountPageContent() {
           </div>
 
           <div className="mt-8 flex flex-wrap gap-3 border-t border-slate-100 pt-7">
+            <Link
+              href="/messages"
+              className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-bold text-[#102d58] hover:bg-slate-50"
+            >
+              My messages
+            </Link>
             {account.profile.role === "buyer" && (
               <Link
                 href="/sell"

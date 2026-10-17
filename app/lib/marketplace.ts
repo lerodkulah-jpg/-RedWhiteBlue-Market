@@ -21,21 +21,40 @@ type ProductRow = {
   condition: string;
   location: string;
   moderation_status: string;
+  created_at: string;
 };
-type SellerRow = { user_id: string; display_name: string };
+type SellerRow = {
+  user_id: string;
+  display_name: string;
+  business_name: string | null;
+};
 type ProductImageRow = { product_id: string; storage_path: string; position: number };
+
+export type MarketplaceSeller = {
+  id: string;
+  name: string;
+  location: string;
+  productCount: number;
+};
 
 export type MarketplaceData = {
   listings: MarketplaceListing[];
   categories: string[];
+  sellers: MarketplaceSeller[];
   error: string | null;
   usingSamples: boolean;
 };
 
 const sampleListings: MarketplaceListing[] = sampleProducts.map((product) => ({
   id: String(product.id),
+  sellerId: null,
   name: product.name,
-  category: product.category,
+  category:
+    product.category === "Food & Grocery"
+      ? "Food & Groceries"
+      : product.category === "Beauty"
+        ? "Beauty & Health"
+        : product.category,
   price: product.price,
   currency: product.currency,
   location: product.location,
@@ -47,6 +66,7 @@ const sampleListings: MarketplaceListing[] = sampleProducts.map((product) => ({
   description: product.description,
   imageUrl: null,
   moderationStatus: "sample",
+  createdAt: null,
 }));
 
 export async function getProductImageUrls(paths: string[]) {
@@ -116,6 +136,7 @@ function rowToListing(
   const firstImagePath = imageByProductId.get(product.id);
   return {
     id: product.id,
+    sellerId: product.seller_id,
     name: product.name,
     category: categoryById.get(product.category_id) ?? "Other",
     price: Number(product.price),
@@ -131,6 +152,7 @@ function rowToListing(
       ? requireProductImageUrl(imageUrlByPath, firstImagePath)
       : null,
     moderationStatus: product.moderation_status,
+    createdAt: product.created_at,
   };
 }
 
@@ -139,6 +161,7 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
     return {
       listings: sampleListings,
       categories: [...productCategories],
+      sellers: [],
       error: null,
       usingSamples: true,
     };
@@ -150,7 +173,7 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
     supabase
       .from("products")
       .select(
-        "id, seller_id, name, description, category_id, price, currency, condition, location, moderation_status",
+        "id, seller_id, name, description, category_id, price, currency, condition, location, moderation_status, created_at",
       )
       .eq("moderation_status", "published")
       .order("created_at", { ascending: false }),
@@ -160,6 +183,7 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
     return {
       listings: [],
       categories: [...productCategories],
+      sellers: [],
       error:
         categoryResult.error?.message ??
         productResult.error?.message ??
@@ -178,7 +202,7 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
       ? await Promise.all([
           supabase
             .from("seller_profiles")
-            .select("user_id, display_name")
+            .select("user_id, display_name, business_name")
             .in("user_id", sellerIds),
           supabase
             .from("product_images")
@@ -192,6 +216,7 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
     return {
       listings: [],
       categories: categoryRows.map((category) => category.name),
+      sellers: [],
       error:
         sellerResult.error?.message ??
         imageResult.error?.message ??
@@ -203,7 +228,7 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
   const sellerById = new Map(
     ((sellerResult.data ?? []) as SellerRow[]).map((seller) => [
       seller.user_id,
-      seller.display_name,
+      seller.business_name?.trim() || seller.display_name,
     ]),
   );
   const imageByProductId = new Map<string, string>();
@@ -219,8 +244,7 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
     categoryRows.map((category) => [category.id, category.name]),
   );
 
-  return {
-    listings: productRows.map((product) =>
+  const listings = productRows.map((product) =>
       rowToListing(
         product,
         categoryById,
@@ -228,8 +252,28 @@ export async function getMarketplaceData(): Promise<MarketplaceData> {
         imageByProductId,
         imageUrlByPath,
       ),
-    ),
+    );
+
+  const sellersById = new Map<string, MarketplaceSeller>();
+  for (const listing of listings) {
+    if (!listing.sellerId || !sellerById.has(listing.sellerId)) continue;
+    const existing = sellersById.get(listing.sellerId);
+    if (existing) {
+      existing.productCount += 1;
+      continue;
+    }
+    sellersById.set(listing.sellerId, {
+      id: listing.sellerId,
+      name: listing.seller,
+      location: listing.location,
+      productCount: 1,
+    });
+  }
+
+  return {
+    listings,
     categories: categoryRows.map((category) => category.name),
+    sellers: [...sellersById.values()],
     error: null,
     usingSamples: false,
   };
@@ -247,13 +291,16 @@ export async function getProductDetails(productId: string) {
     return {
       ...sample,
       id: String(sample.id),
+      seller_id: null,
       imageUrl: null,
       imageUrls: [],
       featured: sample.featured,
       color: sample.color,
       emoji: sample.emoji,
       currency: sample.currency as "USD" | "LRD",
-      formattedPrice: formatPrice(sample.price, sample.currency),
+      formattedPrice: sample.price === null
+        ? "Contact seller for price"
+        : formatPrice(sample.price, sample.currency),
       moderationStatus: "sample",
     };
   }
@@ -282,7 +329,11 @@ export async function getProductDetails(productId: string) {
   const product = data as ProductRow;
   const [categoryResult, sellerResult, imageResult] = await Promise.all([
     supabase.from("categories").select("id, name").eq("id", product.category_id).single(),
-    supabase.from("seller_profiles").select("user_id, display_name").eq("user_id", product.seller_id).single(),
+    supabase
+      .from("seller_profiles")
+      .select("user_id, display_name, business_name")
+      .eq("user_id", product.seller_id)
+      .single(),
     supabase
       .from("product_images")
       .select("product_id, storage_path, position")
@@ -306,7 +357,9 @@ export async function getProductDetails(productId: string) {
     ...product,
     id: product.id,
     category: (categoryResult.data as CategoryRow).name,
-    seller: (sellerResult.data as SellerRow).display_name,
+    seller:
+      (sellerResult.data as SellerRow).business_name?.trim() ||
+      (sellerResult.data as SellerRow).display_name,
     price: Number(product.price),
     emoji: "🛍️",
     color: "from-slate-100 to-blue-100",

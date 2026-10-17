@@ -159,11 +159,14 @@ async function AdminPageContent() {
             Administrator
           </p>
           <h1 className="mt-2 text-3xl font-black text-[#102d58]">
-            Seller applications
+            Legacy seller requests
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Review applications before enabling seller access.
+            Basic requests cannot grant seller access; use the verified identity and store review workflow.
           </p>
+          <Link href="/admin/sellers" className="mt-4 inline-flex rounded-xl bg-[#0866f5] px-4 py-2.5 text-sm font-bold text-white">
+            Open secure seller verification
+          </Link>
           {applicationsError ? (
             <p role="alert" className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-800">
               Unable to load seller applications: {applicationsError.message}

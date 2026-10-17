@@ -5,6 +5,7 @@ import { getProductDetails } from "@/app/lib/marketplace";
 import { ProductPhoto } from "@/app/components/product-photo";
 import { getCurrentAccount } from "@/app/lib/auth/account";
 import { ListingReportForm } from "@/app/components/products/listing-report-form";
+import { StartConversationForm } from "@/app/components/messages/start-conversation-form";
 
 type ProductPageProps = {
   params: Promise<{ id: string }>;
@@ -98,7 +99,11 @@ export default async function ProductDetailsPage({
               {product.name}
             </h1>
 
-            <p className="mt-5 text-3xl font-black text-[#102d58]">
+            <p
+              className={`mt-5 font-black text-[#102d58] ${
+                product.price === null ? "text-lg" : "text-3xl"
+              }`}
+            >
               {product.formattedPrice}
             </p>
 
@@ -136,18 +141,32 @@ export default async function ProductDetailsPage({
               </div>
             </div>
 
-            <button
-              type="button"
-              disabled
-              className="mt-7 w-full cursor-not-allowed rounded-xl bg-[#e52b3b] px-5 py-3.5 text-sm font-bold text-white opacity-70"
-            >
-              Contact seller — coming soon
-            </button>
+            {product.moderationStatus === "published" &&
+            product.seller_id !== account.user?.id ? (
+              account.user ? (
+                <StartConversationForm productId={product.id} />
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="mt-7 block w-full rounded-xl bg-[#e52b3b] px-5 py-3.5 text-center text-sm font-bold text-white transition hover:bg-red-700"
+                >
+                  Sign in to message seller
+                </Link>
+              )
+            ) : product.seller_id === account.user?.id ? (
+              <p className="mt-7 rounded-xl bg-blue-50 px-4 py-3.5 text-center text-sm font-semibold text-[#102d58]">
+                This is your listing.
+              </p>
+            ) : (
+              <p className="mt-7 rounded-xl bg-slate-100 px-4 py-3.5 text-center text-sm text-slate-600">
+                Private messaging is available for published listings.
+              </p>
+            )}
 
             <p className="mt-3 text-center text-xs leading-5 text-slate-500">
-              Contact details and secure checkout are not yet available.
-              Confirm product details and agree on a safe transaction before
-              making any payment.
+              Private messages are available to signed-in, email-verified
+              accounts. Secure checkout is not available; agree on a safe
+              transaction before paying.
             </p>
 
             <Link

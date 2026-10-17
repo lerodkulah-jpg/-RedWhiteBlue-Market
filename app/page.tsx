@@ -1,8 +1,20 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import HomeMarketplace from "@/app/home-marketplace";
 import { getCurrentAccount } from "@/app/lib/auth/account";
 import { getMarketplaceData } from "@/app/lib/marketplace";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "RedWhiteBlue Market | Liberia Buys. Liberia Sells. Liberia Grows.",
+  description:
+    "Shop published listings from local sellers across Liberia. Discover electronics, fashion, home goods, vehicles, property, services, and more.",
+  openGraph: {
+    title: "RedWhiteBlue Market",
+    description:
+      "Discover local products and connect with sellers across Liberia.",
+  },
+};
 
 export default function HomePage() {
   return (
@@ -40,8 +52,10 @@ async function MarketplacePageContent() {
         <HomeMarketplace
           listings={marketplace.listings}
           categoryNames={marketplace.categories}
+          sellers={marketplace.sellers}
           initialFavorites={[]}
           userId={account.user.id}
+          userName={account.profile?.display_name ?? null}
           loadError={error.message}
           usingSamples={marketplace.usingSamples}
         />
@@ -55,8 +69,10 @@ async function MarketplacePageContent() {
     <HomeMarketplace
       listings={marketplace.listings}
       categoryNames={marketplace.categories}
+      sellers={marketplace.sellers}
       initialFavorites={initialFavorites}
       userId={account.user?.id ?? null}
+      userName={account.profile?.display_name ?? null}
       loadError={marketplace.error}
       usingSamples={marketplace.usingSamples}
     />

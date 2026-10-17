@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { MarketBrand } from "@/app/components/market-brand";
 
 export function AuthShell({
   title,
@@ -15,9 +16,12 @@ export function AuthShell({
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 sm:px-6 sm:py-16">
       <div className="mx-auto w-full max-w-md">
-        <Link href="/" className="inline-flex text-sm font-bold text-[#102d58] hover:text-[#e52b3b]">
-          ← Back to RedWhiteBlue Market
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <MarketBrand size={40} />
+          <Link href="/" className="text-xs font-bold text-[#102d58] hover:text-[#e52b3b]">
+            Back to marketplace
+          </Link>
+        </div>
         <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#e52b3b]">
             Liberia Buys. Liberia Sells. Liberia Grows.

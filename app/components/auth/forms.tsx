@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { Eye, EyeOff } from "lucide-react";
 import {
   sendPasswordResetAction,
   signInAction,
@@ -14,6 +15,46 @@ import { initialFormState } from "@/app/lib/auth/form-state";
 
 const inputClass =
   "mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#102d58] focus:ring-2 focus:ring-blue-100";
+
+function PasswordInput({
+  id,
+  name,
+  autoComplete,
+  minLength,
+  required = true,
+}: {
+  id: string;
+  name: string;
+  autoComplete: string;
+  minLength?: number;
+  required?: boolean;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        name={name}
+        type={visible ? "text" : "password"}
+        autoComplete={autoComplete}
+        required={required}
+        minLength={minLength}
+        className={`${inputClass} pr-16`}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((current) => !current)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        className="absolute right-3 top-[calc(50%+4px)] inline-flex -translate-y-1/2 items-center gap-1.5 rounded-md px-1 py-1 text-xs font-semibold text-slate-600 hover:text-[#102d58] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0866f5]"
+      >
+        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+        {visible ? "Hide" : "Show"}
+      </button>
+    </div>
+  );
+}
 
 function SubmitButton({ children, pendingLabel }: { children: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
@@ -96,7 +137,7 @@ export function LoginForm() {
             Forgot password?
           </Link>
         </div>
-        <input id="password" name="password" type="password" autoComplete="current-password" required className={inputClass} />
+        <PasswordInput id="password" name="password" autoComplete="current-password" />
       </div>
       <FormMessage message={state.message} status={state.status} />
       <SubmitButton pendingLabel="Signing in…">Sign in</SubmitButton>
@@ -125,13 +166,13 @@ export function SignUpForm() {
         <label htmlFor="password" className="text-sm font-bold text-slate-700">
           Password
         </label>
-        <input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} className={inputClass} />
+        <PasswordInput id="password" name="password" autoComplete="new-password" minLength={8} />
       </div>
       <div>
         <label htmlFor="confirmPassword" className="text-sm font-bold text-slate-700">
           Confirm password
         </label>
-        <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" required minLength={8} className={inputClass} />
+        <PasswordInput id="confirmPassword" name="confirmPassword" autoComplete="new-password" minLength={8} />
       </div>
       <FormMessage message={state.message} status={state.status} />
       <SubmitButton pendingLabel="Creating account…">Create buyer account</SubmitButton>
@@ -166,13 +207,13 @@ export function UpdatePasswordForm() {
         <label htmlFor="password" className="text-sm font-bold text-slate-700">
           New password
         </label>
-        <input id="password" name="password" type="password" autoComplete="new-password" required minLength={8} className={inputClass} />
+        <PasswordInput id="password" name="password" autoComplete="new-password" minLength={8} />
       </div>
       <div>
         <label htmlFor="confirmPassword" className="text-sm font-bold text-slate-700">
           Confirm new password
         </label>
-        <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" required minLength={8} className={inputClass} />
+        <PasswordInput id="confirmPassword" name="confirmPassword" autoComplete="new-password" minLength={8} />
       </div>
       <FormMessage message={state.message} status={state.status} />
       <SubmitButton pendingLabel="Updating password…">Update password</SubmitButton>

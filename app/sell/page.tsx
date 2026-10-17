@@ -1,39 +1,46 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import type { ReactNode } from "react";
-import { ProductListingForm } from "@/app/components/sell/product-listing-form";
-import { SellerApplicationForm } from "@/app/components/account/forms";
+import { Suspense, type ReactNode } from "react";
+import { MarketBrand } from "@/app/components/market-brand";
+import { SellerVerificationApplication } from "@/app/components/seller/seller-verification-application";
 import { getCurrentAccount } from "@/app/lib/auth/account";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 
-export default function SellPage() {
+type SellSearchParams = Promise<{ submitted?: string; saved?: string }>;
+
+export default function SellPage({
+  searchParams,
+}: {
+  searchParams: SellSearchParams;
+}) {
   return (
     <Suspense
       fallback={
         <SellPageShell>
           <p aria-busy="true" className="text-sm font-semibold text-slate-500">
-            Loading seller options…
+            Loading secure seller verification…
           </p>
         </SellPageShell>
       }
     >
-      <SellPageContent />
+      <SellPageContent searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function SellPageContent() {
+async function SellPageContent({
+  searchParams,
+}: {
+  searchParams: SellSearchParams;
+}) {
+  const params = await searchParams;
   const account = await getCurrentAccount();
 
   if (!account.configured) {
     return (
       <SellPageShell>
-        <h1 className="text-3xl font-black text-[#102d58]">
-          Seller access is being set up
-        </h1>
+        <h1 className="text-3xl font-black text-[#08275a]">Seller verification is unavailable</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Supabase is not configured yet. Add the project URL and publishable
-          key to <code>.env.local</code> to enable account registration.
+          Configure Supabase and apply the database migrations to enable secure seller applications.
         </p>
       </SellPageShell>
     );
@@ -42,16 +49,11 @@ async function SellPageContent() {
   if (!account.user) {
     return (
       <SellPageShell>
-        <h1 className="text-3xl font-black text-[#102d58]">
-          Start selling on RedWhiteBlue Market
-        </h1>
+        <h1 className="text-3xl font-black text-[#08275a]">Become a Verified Seller</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Sign in or create a buyer account before requesting seller access.
+          Sign in or create a buyer account before starting seller verification.
         </p>
-        <Link
-          href="/auth/login"
-          className="mt-6 inline-flex rounded-xl bg-[#102d58] px-5 py-3 text-sm font-bold text-white hover:bg-[#183e75]"
-        >
+        <Link href="/auth/login" className="mt-6 inline-flex rounded-xl bg-[#0866f5] px-5 py-3 text-sm font-bold text-white">
           Sign in to continue
         </Link>
       </SellPageShell>
@@ -61,12 +63,9 @@ async function SellPageContent() {
   if (account.profileError || !account.profile) {
     return (
       <SellPageShell>
-        <h1 className="text-3xl font-black text-[#102d58]">
-          Seller access is unavailable
-        </h1>
+        <h1 className="text-3xl font-black text-[#08275a]">Seller verification is unavailable</h1>
         <p role="alert" className="mt-3 text-sm leading-6 text-red-800">
-          {account.profileError ??
-            "Your profile could not be found. Apply the Supabase database migration and try again."}
+          {account.profileError ?? "Your account profile could not be loaded."}
         </p>
       </SellPageShell>
     );
@@ -75,84 +74,60 @@ async function SellPageContent() {
   if (account.profile.role === "administrator") {
     return (
       <SellPageShell>
-        <h1 className="text-3xl font-black text-[#102d58]">
-          Administrator account
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          Seller applications are managed from the administrator dashboard.
-        </p>
-        <Link
-          href="/admin"
-          className="mt-6 inline-flex rounded-xl bg-[#102d58] px-5 py-3 text-sm font-bold text-white hover:bg-[#183e75]"
-        >
+        <h1 className="text-3xl font-black text-[#08275a]">Administrator account</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-600">Seller applications are reviewed in the protected admin workspace.</p>
+        <Link href="/admin/sellers" className="mt-6 inline-flex rounded-xl bg-[#0866f5] px-5 py-3 text-sm font-bold text-white">
           Review seller applications
         </Link>
       </SellPageShell>
     );
   }
 
-  if (account.profile.role === "seller") {
-    const supabase = await createServerSupabaseClient();
-    const { data: categories, error: categoriesError } = await supabase
-      .from("categories")
-      .select("id, name")
-      .order("name");
+  const supabase = await createServerSupabaseClient();
+  const [
+    { data: application, error: applicationError },
+    { data: authData, error: authError },
+    { data: legacyApplication },
+  ] = await Promise.all([
+    supabase
+      .from("seller_verification_applications")
+      .select("id, reference, status, personal_data, business_data, operations_data, applicant_message, submitted_at")
+      .eq("user_id", account.user.id)
+      .maybeSingle(),
+    supabase.auth.getUser(),
+    supabase
+      .from("seller_applications")
+      .select("status")
+      .eq("user_id", account.user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-    if (categoriesError) {
-      return (
-        <SellPageShell>
-          <h1 className="text-3xl font-black text-[#102d58]">
-            Listing tools are unavailable
-          </h1>
-          <p role="alert" className="mt-3 text-sm leading-6 text-red-800">
-            Unable to load product categories: {categoriesError.message}
-          </p>
-        </SellPageShell>
-      );
-    }
-
+  if (applicationError) {
     return (
       <SellPageShell>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#e52b3b]">
-          Seller account
+        <h1 className="text-3xl font-black text-[#08275a]">Seller verification is unavailable</h1>
+        <p role="alert" className="mt-3 text-sm leading-6 text-red-800">
+          Unable to load your private verification record: {applicationError.message}
         </p>
-        <h1 className="mt-2 text-3xl font-black text-[#102d58]">
-          Prepare a product listing
-        </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          Your listing will be reviewed by an administrator before it appears
-          in the public marketplace.
-        </p>
-        <Link
-          href="/dashboard/products"
-          className="mt-5 inline-flex text-sm font-bold text-[#102d58] hover:underline"
-        >
-          Manage your listings
-        </Link>
-        <div className="mt-7">
-          <ProductListingForm categories={categories ?? []} />
-        </div>
       </SellPageShell>
     );
   }
 
-  const supabase = await createServerSupabaseClient();
-  const { data: application, error } = await supabase
-    .from("seller_applications")
-    .select("status")
-    .eq("user_id", account.user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const documentResult = application
+    ? await supabase
+        .from("seller_verification_documents")
+        .select("document_type")
+        .eq("application_id", application.id)
+    : { data: [], error: null };
 
-  if (error) {
+  if (documentResult.error) {
     return (
       <SellPageShell>
-        <h1 className="text-3xl font-black text-[#102d58]">
-          Seller access is unavailable
-        </h1>
+        <h1 className="text-3xl font-black text-[#08275a]">Seller verification is unavailable</h1>
         <p role="alert" className="mt-3 text-sm leading-6 text-red-800">
-          {error.message}
+          Unable to load your private document records: {documentResult.error.message}
         </p>
       </SellPageShell>
     );
@@ -160,41 +135,43 @@ async function SellPageContent() {
 
   return (
     <SellPageShell>
-      <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#e52b3b]">
-        Seller registration
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#f0142f]">Seller onboarding</p>
+      <h1 className="mt-2 text-3xl font-black text-[#08275a]">Become a Verified Seller</h1>
+      <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+        Help us protect buyers and sellers by verifying your identity and store information.
       </p>
-      <h1 className="mt-2 text-3xl font-black text-[#102d58]">
-        Apply to sell on RedWhiteBlue Market
-      </h1>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
-        Tell us how buyers can identify and contact you. Seller access is
-        reviewed before listing tools are enabled.
-      </p>
-
-      {application?.status === "pending" ? (
-        <p
-          role="status"
-          className="mt-7 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950"
-        >
-          Your seller request is under review. We will enable seller access
-          after an administrator reviews it.
+      {legacyApplication?.status === "pending" && !application && (
+        <p className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
+          Your earlier basic seller request needs to be completed through this secure verification workflow before it can be reviewed.
         </p>
-      ) : (
-        <div className="mt-7">
-          {application?.status === "rejected" && (
-            <p className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800">
-              Your previous request was not approved. You may update your
-              details and submit a new request.
-            </p>
-          )}
-          <SellerApplicationForm
-            values={{
-              displayName: account.profile.display_name ?? "",
-              phone: account.profile.phone ?? "",
-              location: account.profile.location ?? "",
-            }}
-          />
-        </div>
+      )}
+      {authError || !authData.user?.email_confirmed_at ? (
+        <p role="alert" className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950">
+          Verify your account email before submitting a seller application. We use the verified email already associated with your account.
+        </p>
+      ) : null}
+      <SellerVerificationApplication
+        email={authData.user?.email ?? ""}
+        displayName={account.profile.display_name ?? ""}
+        phone={account.profile.phone ?? ""}
+        location={account.profile.location ?? ""}
+        application={application as {
+          id: string;
+          reference: string;
+          status: string;
+          personal_data: Record<string, unknown>;
+          business_data: Record<string, unknown>;
+          operations_data: Record<string, unknown>;
+          applicant_message: string | null;
+          submitted_at: string | null;
+        } | null}
+        documentTypes={(documentResult.data ?? []).map((item) => item.document_type)}
+        savedNotice={params.saved === "1"}
+      />
+      {params.submitted === "1" && (
+        <p role="status" className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
+          Your application was submitted for review. Approval is subject to verification; seller tools remain restricted until approval.
+        </p>
       )}
     </SellPageShell>
   );
@@ -202,15 +179,15 @@ async function SellPageContent() {
 
 function SellPageShell({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 sm:px-6">
-      <div className="mx-auto max-w-3xl">
-        <Link
-          href="/"
-          className="text-sm font-semibold text-[#102d58] hover:underline"
-        >
-          ← Back to marketplace
-        </Link>
-        <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-9">
+    <main className="min-h-screen bg-[#f3f7fd] px-4 py-10 text-slate-900 sm:px-6">
+      <div className="mx-auto max-w-4xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <MarketBrand size={40} />
+          <Link href="/" className="text-sm font-semibold text-[#08275a] hover:underline">
+            ← Back to marketplace
+          </Link>
+        </div>
+        <section className="mt-6 rounded-3xl border border-[#dce8f8] bg-white p-6 shadow-sm sm:p-9">
           {children}
         </section>
       </div>

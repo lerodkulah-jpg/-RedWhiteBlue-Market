@@ -1,9 +1,4 @@
-"use client";
-
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import { reviewSellerApplicationAction } from "@/app/actions/auth";
-import { initialFormState } from "@/app/lib/auth/form-state";
+import Link from "next/link";
 
 export type SellerApplication = {
   id: string;
@@ -15,14 +10,7 @@ export type SellerApplication = {
   status: "pending" | "approved" | "rejected";
 };
 
-function ReviewButton({ status, children }: { status: "approved" | "rejected"; children: string }) {
-  const { pending } = useFormStatus();
-  return <button name="status" value={status} disabled={pending} className={`rounded-lg px-3 py-2 text-xs font-bold text-white disabled:opacity-60 ${status === "approved" ? "bg-green-700 hover:bg-green-800" : "bg-red-700 hover:bg-red-800"}`}>{pending ? "Saving…" : children}</button>;
-}
-
 function ApplicationRow({ application }: { application: SellerApplication }) {
-  const [state, action] = useActionState(reviewSellerApplicationAction, initialFormState);
-
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -34,12 +22,11 @@ function ApplicationRow({ application }: { application: SellerApplication }) {
         <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-800">{application.status}</span>
       </div>
       {application.status === "pending" && (
-        <form action={action} className="mt-4 flex flex-wrap items-center gap-2">
-          <input type="hidden" name="applicationId" value={application.id} />
-          <ReviewButton status="approved">Approve seller</ReviewButton>
-          <ReviewButton status="rejected">Reject request</ReviewButton>
-          {state.message && <p role={state.status === "error" ? "alert" : "status"} className={`text-sm ${state.status === "error" ? "text-red-700" : "text-green-700"}`}>{state.message}</p>}
-        </form>
+        <p className="mt-4 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+          This is a legacy basic request and cannot grant seller access. The applicant must complete secure identity verification first.
+          {" "}
+          <Link href="/admin/sellers" className="font-bold underline">Open verification queue</Link>
+        </p>
       )}
     </article>
   );
