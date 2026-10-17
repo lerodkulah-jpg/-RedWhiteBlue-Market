@@ -245,17 +245,18 @@ begin
       or char_length(trim(coalesce(p_data #>> '{business,country}', ''))) not between 2 and 80
       or char_length(trim(coalesce(p_data #>> '{business,city}', ''))) not between 2 and 80
       or coalesce(jsonb_typeof(p_data #> '{business,categories}'), '') <> 'array'
-      or case
+      or coalesce(jsonb_array_length(
+        case
         when jsonb_typeof(p_data #> '{business,categories}') = 'array'
-          then jsonb_array_length(p_data #> '{business,categories}') not between 1 and 20
-        else true
-      end
+          then p_data #> '{business,categories}'
+          else '[]'::jsonb
+        end
+      ), 0) not between 1 and 20
       or char_length(trim(coalesce(p_data #>> '{operations,productSources}', ''))) not between 5 and 1000
       or coalesce(p_data #>> '{operations,sellerMethod}', '') not in ('manufacture', 'distribute', 'resell')
       or char_length(trim(coalesce(p_data #>> '{operations,deliveryMethods}', ''))) not between 3 and 500
       or char_length(trim(coalesce(p_data #>> '{operations,processingTime}', ''))) not between 2 and 120
       or coalesce(p_data #>> '{operations,authenticity}', 'false') <> 'true'
-      or jsonb_typeof(p_data #> '{business,categories}') <> 'array'
       or jsonb_typeof(p_data #> '{agreements}') <> 'object' then
       raise exception 'Complete all required seller application fields'
         using errcode = '22023';
