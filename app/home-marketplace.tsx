@@ -335,11 +335,11 @@ export default function HomeMarketplace({
           fill
           priority
           sizes="100vw"
-          className="pointer-events-none -z-20 object-cover object-[68%_center] sm:object-center"
+          className="pointer-events-none -z-20 object-contain object-top sm:object-cover sm:object-center"
         />
-        <div className="absolute inset-0 -z-10 bg-linear-to-r from-[#061d45]/90 via-[#062b56]/70 to-[#062b56]/20 sm:from-[#061d45]/80 sm:via-[#062b56]/45 sm:to-transparent" />
+        <div className="absolute inset-0 -z-10 bg-linear-to-b from-[#061d45]/45 via-[#062b56]/65 to-[#082c5b] sm:bg-linear-to-r sm:from-[#061d45]/80 sm:via-[#062b56]/45 sm:to-transparent" />
         <div className="absolute inset-0 -z-10 bg-[#061d45]/20" />
-        <div className="mx-auto flex min-h-117.5 max-w-7xl items-center px-4 py-9 sm:min-h-107.5 sm:px-6 sm:py-12 lg:min-h-110 lg:px-8">
+        <div className="mx-auto flex min-h-0 max-w-7xl flex-col items-stretch px-4 py-7 sm:min-h-107.5 sm:flex-row sm:items-center sm:px-6 sm:py-12 lg:min-h-110 lg:px-8">
           <div className="max-w-3xl">
             <p className="mb-3 text-xs font-semibold text-blue-100 sm:text-sm">
               Buy <span className="mx-1 text-white/60">›</span> Sell <span className="mx-1 text-white/60">›</span> Support Liberia
