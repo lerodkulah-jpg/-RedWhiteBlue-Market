@@ -83,10 +83,14 @@ revoke all on public.seller_subscription_plans, public.seller_subscriptions
 grant select on public.seller_subscription_plans,
   public.seller_subscriptions to authenticated;
 
+drop policy if exists "Authenticated users can read subscription plans"
+  on public.seller_subscription_plans;
 create policy "Authenticated users can read subscription plans"
   on public.seller_subscription_plans for select to authenticated
   using (enabled);
 
+drop policy if exists "Sellers and administrators can read subscriptions"
+  on public.seller_subscriptions;
 create policy "Sellers and administrators can read subscriptions"
   on public.seller_subscriptions for select to authenticated
   using (
@@ -112,6 +116,8 @@ alter table public.seller_trial_reminders enable row level security;
 revoke all on public.seller_trial_reminders from anon, authenticated;
 grant select on public.seller_trial_reminders to authenticated;
 
+drop policy if exists "Sellers can read their trial reminders"
+  on public.seller_trial_reminders;
 create policy "Sellers can read their trial reminders"
   on public.seller_trial_reminders for select to authenticated
   using (seller_id = (select auth.uid()));
