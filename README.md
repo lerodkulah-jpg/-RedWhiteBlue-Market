@@ -26,11 +26,11 @@ session and RLS.
 
 ## Installable app and security
 
-The homepage includes an install button and the app provides a web manifest
-with install icons. Users can install it from a supported browser; on iPhone
-and iPad, use Safari's Share menu and choose Add to Home Screen. Production
-installations require the site to be served over HTTPS. The installed app
-continues to use the live marketplace; offline browsing is not enabled.
+The app provides a web manifest with install icons and can be installed using
+the browser's built-in install option; on iPhone and iPad, use Safari's Share
+menu and choose Add to Home Screen. Production installations require the site
+to be served over HTTPS. The installed app continues to use the live
+marketplace; offline browsing is not enabled.
 
 The Next.js server adds clickjacking, MIME-sniffing, referrer, and permissions
 policy headers, disables the `X-Powered-By` header, and enables HSTS in

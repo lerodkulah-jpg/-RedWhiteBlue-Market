@@ -37,7 +37,6 @@ import {
 } from "lucide-react";
 import { ProductPhoto } from "@/app/components/product-photo";
 import { MarketBrand } from "@/app/components/market-brand";
-import { PwaInstallButton } from "@/app/components/pwa-install-button";
 import { toggleFavoriteAction } from "@/app/actions/products";
 import { signOutAction } from "@/app/actions/auth";
 import type { MarketplaceSeller } from "@/app/lib/marketplace";
@@ -406,7 +405,6 @@ export default function HomeMarketplace({
               >
                 Become a Seller <Store size={15} />
               </Link>
-              <PwaInstallButton />
             </div>
             <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[11px] font-medium text-white sm:text-xs">
               <span className="inline-flex items-center gap-1.5"><ShieldCheck size={15} /> Secure accounts</span>
