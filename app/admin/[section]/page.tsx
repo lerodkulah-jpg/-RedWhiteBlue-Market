@@ -514,10 +514,10 @@ async function AdminSectionPage({
       getAdminSellers(search, page),
       supabase
         .from("seller_verification_applications")
-        .select("id, reference, user_id, status, personal_data, business_data, operations_data, submitted_at, updated_at, applicant_message")
+        .select("id, reference, user_id, status, personal_data, business_data, operations_data, submitted_at, updated_at, applicant_message, possible_duplicate_trial")
         .neq("status", "draft")
         .order("updated_at", { ascending: false })
-        .limit(50),
+        .limit(1000),
     ]);
     const applicationIds = (applicationsResult.data ?? []).map((item) => item.id);
     const documentsResult = applicationIds.length

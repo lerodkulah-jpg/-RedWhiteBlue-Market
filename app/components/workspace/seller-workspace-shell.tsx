@@ -29,6 +29,10 @@ import {
 import { signOutAction } from "@/app/actions/auth";
 import { MarketBrand } from "@/app/components/market-brand";
 import { WorkspaceRealtime } from "@/app/components/workspace/workspace-realtime";
+import type {
+  SellerSubscription,
+  SellerTrialReminder,
+} from "@/app/lib/seller-subscriptions";
 
 type SellerNavigationItem = {
   title: string;
@@ -188,6 +192,8 @@ export function SellerWorkspaceShell({
   storeName,
   unreadCount,
   unreadCountError,
+  subscription,
+  trialReminders,
   children,
 }: {
   userId: string;
@@ -195,6 +201,11 @@ export function SellerWorkspaceShell({
   storeName: string;
   unreadCount: number | null;
   unreadCountError: string | null;
+  subscription: (SellerSubscription & {
+    status: SellerSubscription["status"] | "expired";
+    trial_days_remaining: number | null;
+  }) | null;
+  trialReminders: SellerTrialReminder[];
   children: ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -323,6 +334,91 @@ export function SellerWorkspaceShell({
               the latest messaging migration to enable them.
             </p>
           )}
+          <section
+            aria-label="Seller subscription"
+            className={`mb-3 rounded-xl border px-4 py-3 text-xs ${
+              subscription?.status === "expired" ||
+              subscription?.status === "suspended" ||
+              !subscription
+                ? "border-amber-200 bg-amber-50 text-amber-950"
+                : "border-blue-200 bg-white text-[#08275a]"
+            }`}
+          >
+            {subscription?.status === "trialing" ? (
+              <>
+                <p className="font-black">
+                  Free trial · {subscription.trial_days_remaining} days remaining
+                </p>
+                <p className="mt-1">
+                  Started{" "}
+                  {new Intl.DateTimeFormat("en", {
+                    dateStyle: "medium",
+                    timeZone: "Africa/Monrovia",
+                  }).format(new Date(subscription.trial_started_at))}
+                  {" · "}expires{" "}
+                  {new Intl.DateTimeFormat("en", {
+                    dateStyle: "medium",
+                    timeZone: "Africa/Monrovia",
+                  }).format(new Date(subscription.trial_ends_at))}
+                </p>
+              </>
+            ) : subscription?.status === "active" ? (
+              <>
+                <p className="font-black">
+                  Paid subscription ·{" "}
+                  {subscription.plan_id === "yearly" ? "Yearly" : "Monthly"}
+                </p>
+                <p className="mt-1">
+                  Verified through{" "}
+                  {subscription.current_period_ends_at
+                    ? new Intl.DateTimeFormat("en", {
+                        dateStyle: "medium",
+                        timeZone: "Africa/Monrovia",
+                      }).format(new Date(subscription.current_period_ends_at))
+                    : "—"}
+                  . Automatic renewal is off.
+                </p>
+              </>
+            ) : subscription?.status === "expired" ||
+              subscription?.status === "canceled" ? (
+              <>
+                <p className="font-black">Seller trial expired · Listings paused</p>
+                <p className="mt-1">
+                  Your account remains available, but new or changed listings
+                  are disabled until a subscription payment is verified.
+                </p>
+              </>
+            ) : subscription?.status === "suspended" ? (
+              <>
+                <p className="font-black">Seller subscription suspended</p>
+                <p className="mt-1">
+                  Contact support if you think this status is incorrect.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-black">Trial details unavailable</p>
+                <p className="mt-1">
+                  Listing actions remain disabled until your seller subscription
+                  is set up.
+                </p>
+              </>
+            )}
+            <p className="mt-1">
+              Plans: $5 USD/month or $50 USD/year. Verified Lonestar billing is
+              not configured yet; no automatic charges are made.
+            </p>
+            {trialReminders.map((reminder) => (
+              <p
+                key={`${reminder.days_before_expiry}-${reminder.created_at}`}
+                className="mt-1 font-semibold"
+              >
+                Trial reminder: your trial expires in{" "}
+                {reminder.days_before_expiry} day
+                {reminder.days_before_expiry === 1 ? "" : "s"}.
+              </p>
+            ))}
+          </section>
           {children}
         </div>
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[#dce8f8] bg-white px-4 py-3 text-[9px] text-slate-500 sm:px-6">

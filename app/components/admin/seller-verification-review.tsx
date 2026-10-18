@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { FileCheck2, FileText, ExternalLink } from "lucide-react";
 import {
   createVerificationDocumentLinkAction,
+  registerSellerTrialIdentityAction,
   reviewSellerVerificationAction,
 } from "@/app/actions/seller-verification";
 import { initialFormState } from "@/app/lib/auth/form-state";
@@ -28,6 +29,7 @@ export type VerificationReviewRecord = {
   submitted_at: string | null;
   updated_at: string;
   applicant_message: string | null;
+  possible_duplicate_trial: boolean;
   documents: VerificationDocumentSummary[];
   checks: { check_type: string; outcome: string; reason: string | null }[];
 };
@@ -111,6 +113,71 @@ function PrivateDocumentLink({ document }: { document: VerificationDocumentSumma
   );
 }
 
+function RegisterExistingSellerIdentity({
+  application,
+}: {
+  application: VerificationReviewRecord;
+}) {
+  const [state, action] = useActionState(
+    registerSellerTrialIdentityAction,
+    initialFormState,
+  );
+  const hasIdentityDocument = application.documents.some((document) =>
+    ["national_id", "passport", "drivers_license"].includes(
+      document.document_type,
+    ),
+  );
+
+  if (!hasIdentityDocument) {
+    return (
+      <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[10px] leading-4 text-amber-950">
+        A current identity document is required to register this existing
+        seller&apos;s trial-prevention fingerprint. Request renewed verification
+        if the previous document was purged.
+      </p>
+    );
+  }
+
+  if (state.status === "success") {
+    return (
+      <p role="status" className="mt-3 text-[10px] font-semibold text-emerald-800">
+        {state.message}
+      </p>
+    );
+  }
+
+  return (
+    <form action={action} className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+      <input type="hidden" name="applicationId" value={application.id} />
+      <label className="block text-[10px] font-bold text-[#08275a]">
+        Register existing seller&apos;s verified trial identity
+        <input
+          name="verified_identity_number"
+          type="password"
+          autoComplete="off"
+          maxLength={128}
+          className="mt-1 w-full rounded-md border border-blue-200 bg-white px-3 py-2 text-xs"
+        />
+      </label>
+      <p className="mt-1 text-[9px] leading-4 text-slate-600">
+        Read the number from the reviewed document. Only its keyed fingerprint
+        is stored; the number is not saved.
+      </p>
+      <button
+        type="submit"
+        className="mt-2 rounded-md bg-[#0866f5] px-3 py-2 text-[10px] font-bold text-white"
+      >
+        Register verified identity
+      </button>
+      {state.status === "error" && (
+        <p role="alert" className="mt-2 text-[10px] text-red-700">
+          {state.message}
+        </p>
+      )}
+    </form>
+  );
+}
+
 function VerificationApplicationCard({
   application,
 }: {
@@ -139,6 +206,15 @@ function VerificationApplicationCard({
             Submitted {application.submitted_at ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(application.submitted_at)) : "—"}
           </p>
         </div>
+        {application.possible_duplicate_trial && (
+          <p
+            role="status"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-950"
+          >
+            Possible duplicate free trial. Compare verified identity and
+            registration documents before approval.
+          </p>
+        )}
         <span className="rounded-full bg-blue-50 px-3 py-1.5 text-[10px] font-bold uppercase text-[#08275a]">
           {application.status.replaceAll("_", " ")}
         </span>
@@ -207,6 +283,22 @@ function VerificationApplicationCard({
               <p className="mt-1 text-[10px] leading-4 text-slate-500">
                 Leave incomplete checks unticked when requesting corrections. Every required check must be passed to approve.
               </p>
+              {reviewable && (
+                <label className="mt-2 block text-[10px] font-bold text-slate-700">
+                  Identity number from the document you reviewed (required for approval)
+                  <input
+                    name="verified_identity_number"
+                    type="password"
+                    autoComplete="off"
+                    maxLength={128}
+                    className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs"
+                  />
+                  <span className="mt-1 block font-normal leading-4 text-slate-500">
+                    Used only to create a keyed duplicate-trial fingerprint. The
+                    raw number is not saved.
+                  </span>
+                </label>
+              )}
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {verificationChecks.map(([name, label]) => (
                   <label key={name} className="flex items-start gap-2 rounded-md bg-slate-50 p-2 text-[10px] leading-4 text-slate-700">
@@ -222,6 +314,19 @@ function VerificationApplicationCard({
                   </label>
                 ))}
               </div>
+              {application.possible_duplicate_trial && (
+                <label className="mt-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-[10px] leading-4 text-amber-950">
+                  <input
+                    type="checkbox"
+                    name="duplicate_trial_reviewed"
+                    className="mt-0.5"
+                  />
+                  I reviewed the matching application and documents and
+                  confirmed this applicant has not already received a seller
+                  trial. If it is the same identity, do not approve a second
+                  trial.
+                </label>
+              )}
             </fieldset>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
@@ -244,6 +349,7 @@ function VerificationApplicationCard({
           )}
         </form>
       )}
+      {approved && <RegisterExistingSellerIdentity application={application} />}
     </article>
   );
 }

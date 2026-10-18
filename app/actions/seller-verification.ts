@@ -6,12 +6,13 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getCurrentAccount } from "@/app/lib/auth/account";
 import type { FormState } from "@/app/lib/auth/form-state";
+import { createSellerTrialIdentityFingerprint } from "@/app/lib/seller-subscriptions";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 import { createStorageAdminClient } from "@/app/lib/supabase/storage-admin";
 
 const bucketName = "seller-verification-private";
 const maxDocumentBytes = 5 * 1024 * 1024;
-const POLICY_VERSION = "2026-10-17-v1";
+const POLICY_VERSION = "2026-10-18-v1";
 
 const formSchema = z.object({
   applicationId: z.string().uuid().optional().or(z.literal("")),
@@ -397,12 +398,37 @@ export async function reviewSellerVerificationAction(
     operations: formData.get("check_operations") === "on",
     agreements: formData.get("check_agreements") === "on",
   };
+  let trialIdentityFingerprint: string | null = null;
+  if (parsed.data.status === "approved") {
+    const identityNumber = formData.get("verified_identity_number");
+    if (typeof identityNumber !== "string") {
+      return {
+        status: "error",
+        message: "Read the identity number from the reviewed identity document.",
+      };
+    }
+    try {
+      trialIdentityFingerprint =
+        createSellerTrialIdentityFingerprint(identityNumber);
+    } catch (error) {
+      return {
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "The verified identity could not be protected for trial enforcement.",
+      };
+    }
+  }
   const supabase = await createServerSupabaseClient();
   const { error } = await supabase.rpc("review_seller_verification_application", {
     p_application_id: parsed.data.applicationId,
     p_status: parsed.data.status,
     p_reason: parsed.data.reason || null,
     p_check_outcomes: checkOutcomes,
+    p_duplicate_trial_reviewed:
+      formData.get("duplicate_trial_reviewed") === "on",
+    p_trial_identity_fingerprint: trialIdentityFingerprint,
   });
   if (error) {
     return { status: "error", message: error.message };
@@ -413,6 +439,84 @@ export async function reviewSellerVerificationAction(
   revalidatePath("/seller", "layout");
   revalidatePath("/dashboard", "page");
   return { status: "success", message: "Verification decision saved." };
+}
+
+export async function registerSellerTrialIdentityAction(
+  _: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const account = await getCurrentAccount();
+  if (
+    !account.configured ||
+    !account.user ||
+    account.profile?.role !== "administrator"
+  ) {
+    return { status: "error", message: "Administrator access is required." };
+  }
+
+  const parsed = z
+    .object({
+      applicationId: z.string().uuid(),
+      identityNumber: z.string().trim().min(4).max(128),
+    })
+    .safeParse({
+      applicationId: formData.get("applicationId"),
+      identityNumber: formData.get("verified_identity_number"),
+    });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: "Enter the identity number from the reviewed document.",
+    };
+  }
+
+  let identityFingerprint: string;
+  try {
+    identityFingerprint = createSellerTrialIdentityFingerprint(
+      parsed.data.identityNumber,
+    );
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "The verified identity could not be protected for trial enforcement.",
+    };
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data: application, error: applicationError } = await supabase
+    .from("seller_verification_applications")
+    .select("user_id, status")
+    .eq("id", parsed.data.applicationId)
+    .maybeSingle();
+  if (applicationError) {
+    return {
+      status: "error",
+      message: `Unable to verify the seller application: ${applicationError.message}`,
+    };
+  }
+  if (!application || application.status !== "approved") {
+    return {
+      status: "error",
+      message: "Only an approved seller's reviewed identity can be registered.",
+    };
+  }
+
+  const { error } = await supabase.rpc("register_seller_trial_identity", {
+    p_seller_id: application.user_id,
+    p_identity_fingerprint: identityFingerprint,
+  });
+  if (error) {
+    return { status: "error", message: error.message };
+  }
+
+  revalidatePath("/admin/sellers");
+  return {
+    status: "success",
+    message: "Verified identity fingerprint registered for trial prevention.",
+  };
 }
 
 export async function createVerificationDocumentLinkAction(

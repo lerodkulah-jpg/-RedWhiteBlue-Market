@@ -40,6 +40,50 @@ row-level security remains active, restrict Supabase Auth redirect URLs, and
 configure rate limits and multi-factor authentication in the Supabase project
 for administrator accounts.
 
+### Seller trial and subscriptions
+
+Apply `20261018090000_seller_trials_and_subscriptions.sql` after the other
+migrations. Admin approval starts a single 30-day trial per seller account;
+subsequent approval actions do not restart it. The seller workspace displays
+the start date, expiry date, remaining trial days, and subscription state.
+Listings cannot be created or changed after expiry. Possible duplicate trials
+based on matching application phone or business-registration details are
+flagged for administrators to compare against the submitted verification
+documents; matching details are a review signal, not automatic proof of
+identity. At approval, an administrator reads the identity number from the
+verified document. The server computes an HMAC-SHA-256 using the
+server-only `SELLER_TRIAL_IDENTITY_PEPPER` and stores only that fingerprint
+for cross-account trial prevention. Never rotate or lose this secret without a
+planned fingerprint migration. Set a random secret with at least 32 bytes in
+the deployment environment; do not add its value to `.env.example`, source
+control, or chat.
+
+Before approving new seller trials after applying the migration, register
+fingerprints for existing approved sellers in `/admin/sellers`. The database
+blocks new approvals until every existing seller has a fingerprint. If an
+existing seller's verification document was purged, request a fresh document
+and review it before registering the fingerprint. The pseudonymous fingerprint
+is retained beyond the 90-day application/document purge, including if the
+original seller account is deleted, to prevent another trial. It must be
+covered by the privacy notice, deletion policy, and legal review.
+
+Subscription prices are stored as $5 USD monthly or $50 USD yearly. Paid
+subscriptions can only be activated by a trusted server-side integration after
+payment verification. The repository does not yet have Lonestar merchant API
+documentation, credentials, signed webhook verification, buyer orders, or
+checkout. No seller can be marked paid, no new order can be marked paid, and
+the website never automatically charges a seller. Configure merchant access
+and provide Lonestar's official API/webhook contract before enabling payments.
+Never paste payment secrets into source code or commit them.
+
+Configure a daily scheduled POST to
+`/api/cron/seller-trial-reminders` with
+`Authorization: Bearer <CRON_SECRET>`. It records idempotent in-app reminders
+7, 3, and 1 calendar days before expiry and marks elapsed trials expired. The
+seller sees reminders in the dashboard on their next visit. Email delivery is
+not configured, so these are not email notifications. Set a strong,
+unpredictable server-only `CRON_SECRET`.
+
 ## Account and seller roles
 
 - New profiles are created as buyers by a database trigger. Signup only accepts
@@ -66,8 +110,12 @@ Identity and applicable business documents accept JPEG, PNG, or PDF up to 5 MB
 each. The server checks file signatures, assigns random private object paths,
 and uploads to the non-public `seller-verification-private` bucket. The server
 action needs the server-only `SUPABASE_SERVICE_ROLE_KEY` for uploads and admins
-need it to open a 60-second signed document link. No identity number,
-password, card security code, or bank password is collected. Database RLS
+need it to open a 60-second signed document link. Applicants do not submit
+identity numbers in form fields. During document review, an administrator
+enters the number read from the identity document; the server uses it to
+calculate a keyed fingerprint and does not write the raw number to the
+database. Passwords, card security codes, and bank passwords are never
+collected. Database RLS
 restricts application records and document metadata to the applicant and
 authorized administrators; only an administrator can read objects directly.
 Basic legacy seller applications are not allowed to promote accounts.

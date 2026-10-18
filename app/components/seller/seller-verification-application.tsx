@@ -119,7 +119,7 @@ function StatusPanel({
     },
     approved: {
       title: "Seller application approved",
-      detail: "Your seller tools are enabled. Payouts remain unavailable until a supported payment provider verifies your account.",
+      detail: "Your 30-day free trial starts when your application is approved. Payouts remain unavailable until a supported payment provider verifies your account.",
       color: "border-emerald-200 bg-emerald-50 text-emerald-950",
     },
     rejected: {
@@ -458,7 +458,7 @@ function VerificationForm({
             </label>
           </div>
           <div className="rounded-xl bg-slate-50 p-4 text-xs leading-5 text-slate-600">
-            <strong className="text-[#08275a]">Application review:</strong> Your verified email, application data, identity document, and policy acknowledgements will be available only to you and authorized verification staff. Do not include identity document numbers in free-text fields.
+            <strong className="text-[#08275a]">Application review:</strong> Your verified email, application data, identity document, and policy acknowledgements will be available only to you and authorized verification staff. An administrator uses the number on your verified identity document to create a keyed fingerprint that helps prevent repeat free trials. The raw number is not stored. Read the privacy notice before acknowledging it.
           </div>
         </fieldset>
 

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getCurrentAccount } from "@/app/lib/auth/account";
 import type { FormState } from "@/app/lib/auth/form-state";
+import { canSellerTrade, getSellerSubscription } from "@/app/lib/seller-subscriptions";
 import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 import { createStorageAdminClient } from "@/app/lib/supabase/storage-admin";
 
@@ -114,13 +115,32 @@ function validationMessage(error: z.ZodError) {
   return error.issues[0]?.message ?? "Check the listing details and try again.";
 }
 
-async function requireSeller() {
+async function requireSeller(checkSubscription = true) {
   const account = await getCurrentAccount();
   if (!account.configured) {
     return { error: "Configure Supabase before creating product listings." } as const;
   }
   if (!account.user || account.profile?.role !== "seller") {
     return { error: "An approved seller account is required to manage listings." } as const;
+  }
+
+  if (checkSubscription) {
+    const supabase = await createServerSupabaseClient();
+    const { data: subscription, error } = await getSellerSubscription(
+      supabase,
+      account.user.id,
+    );
+    if (error) {
+      return {
+        error: `Seller subscription status is unavailable: ${error.message}`,
+      } as const;
+    }
+    if (!canSellerTrade(subscription)) {
+      return {
+        error:
+          "Your free trial has ended. New or changed listings are paused until a paid subscription is verified.",
+      } as const;
+    }
   }
 
   return { userId: account.user.id } as const;
@@ -477,7 +497,7 @@ export async function deleteProductAction(
   _: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const seller = await requireSeller();
+  const seller = await requireSeller(false);
   if ("error" in seller) {
     return {
       status: "error",

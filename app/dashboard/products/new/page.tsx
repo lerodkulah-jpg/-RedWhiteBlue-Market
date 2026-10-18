@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { ProductListingForm } from "@/app/components/sell/product-listing-form";
 import { requireSellerAccount } from "@/app/lib/auth/account";
 import { getProductCategories } from "@/app/lib/marketplace";
+import { canSellerTrade, getSellerSubscription } from "@/app/lib/seller-subscriptions";
+import { createServerSupabaseClient } from "@/app/lib/supabase/server";
 
 export default function NewProductPage() {
   return (
@@ -19,7 +21,17 @@ export default function NewProductPage() {
 }
 
 async function NewProductContent() {
-  await requireSellerAccount();
+  const account = await requireSellerAccount();
+  const supabase = await createServerSupabaseClient();
+  const { data: subscription, error: subscriptionError } =
+    await getSellerSubscription(supabase, account.user!.id);
+  if (subscriptionError) {
+    throw new Error(
+      `Unable to verify seller subscription: ${subscriptionError.message}`,
+    );
+  }
+  const subscriptionIsCurrent = canSellerTrade(subscription);
+
   let categories: Awaited<ReturnType<typeof getProductCategories>>;
   let categoryError: string | null = null;
   try {
@@ -49,7 +61,16 @@ async function NewProductContent() {
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Submitted listings are reviewed before they become visible to buyers.
           </p>
-          {categoryError ? (
+          {!subscriptionIsCurrent ? (
+            <p
+              role="status"
+              className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"
+            >
+              Your free trial has ended or a subscription is not active. New
+              listings are paused until a paid subscription is verified.
+              Subscription billing is not available yet.
+            </p>
+          ) : categoryError ? (
             <p role="alert" className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-800">
               {categoryError}
             </p>

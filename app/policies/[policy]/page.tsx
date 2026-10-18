@@ -16,7 +16,9 @@ const policyContent: Record<string, { title: string; paragraphs: string[] }> = {
     paragraphs: [
       "Seller verification information is collected to review identity, store ownership, product sourcing, and marketplace safety. Verified account email is taken from the signed-in account; applicants do not create another account.",
       "Identity documents are stored in a private Supabase Storage bucket. Access is restricted to the applicant's own application metadata and authorized verification staff; staff document access uses short-lived signed links.",
-      "Do not include identity document numbers in free-text fields. A retention and deletion schedule must be established before production launch in accordance with the laws applicable to the seller and marketplace.",
+      "Applicants are not asked to submit identity document numbers in their application. During administrator review, an authorized reviewer may enter the number read from the identity document into a protected server action. The raw number is used only to calculate a keyed HMAC fingerprint; it is not saved to the application or database.",
+      "The keyed fingerprint is pseudonymous personal data used to prevent repeat seller free trials across accounts. It is retained while the marketplace operates the seller trial program, including after application details, identity documents, or the original seller account are deleted. It is protected by a server-only secret and is not available to buyers or sellers. Fingerprints cannot be matched if the secret is lost or changed; the operator must protect and back up that secret.",
+      "Identity documents and application details follow the configured retention and deletion schedule. This notice is a product disclosure, not a legal compliance determination; obtain jurisdiction-specific legal review before production use.",
     ],
   },
   "prohibited-products": {
@@ -77,7 +79,7 @@ async function SellerPolicyContent({
           ← Back to seller verification
         </Link>
         <p className="mt-7 text-xs font-bold uppercase tracking-[0.18em] text-[#f0142f]">
-          RedWhiteBlue Market · Policy version 2026-10-17-v1
+          RedWhiteBlue Market · Policy version 2026-10-18-v1
         </p>
         <h1 className="mt-2 text-3xl font-black text-[#08275a]">{content.title}</h1>
         <div className="mt-6 space-y-4 text-sm leading-7 text-slate-700">
