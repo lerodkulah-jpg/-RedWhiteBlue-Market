@@ -438,7 +438,7 @@ drop function if exists public.review_seller_verification_application(
   uuid, text, text, jsonb, boolean
 );
 
-create function public.review_seller_verification_application(
+create or replace function public.review_seller_verification_application(
   p_application_id uuid,
   p_status text,
   p_reason text default null,
