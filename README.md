@@ -24,6 +24,22 @@ contents. It must never be prefixed with `NEXT_PUBLIC_` or imported by browser
 code; marketplace database operations continue to use the signed-in user's
 session and RLS.
 
+## Installable app and security
+
+The homepage includes an install button and the app provides a web manifest
+with install icons. Users can install it from a supported browser; on iPhone
+and iPad, use Safari's Share menu and choose Add to Home Screen. Production
+installations require the site to be served over HTTPS. The installed app
+continues to use the live marketplace; offline browsing is not enabled.
+
+The Next.js server adds clickjacking, MIME-sniffing, referrer, and permissions
+policy headers, disables the `X-Powered-By` header, and enables HSTS in
+production. These are defense-in-depth measures, not a guarantee against
+attacks. Keep production secrets server-only, apply all database migrations so
+row-level security remains active, restrict Supabase Auth redirect URLs, and
+configure rate limits and multi-factor authentication in the Supabase project
+for administrator accounts.
+
 ## Account and seller roles
 
 - New profiles are created as buyers by a database trigger. Signup only accepts
